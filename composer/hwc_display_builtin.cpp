@@ -56,27 +56,52 @@ static void SetRect(LayerRect &src_rect, GLRect *target) {
 
 static std::string LoadPanelGammaCalibration() {
   constexpr char file[] = "/mnt/vendor/persist/display/gamma_calib_data.cal";
-  std::ifstream ifs(file);
-
-  if (!ifs.is_open()) {
+  int fd = open(file, O_RDONLY);
+  if (fd < 0) {
     DLOGW("Unable to open gamma calibration '%s', error = %s", file, strerror(errno));
     return {};
   }
 
-  std::string raw_data, gamma;
-  while (std::getline(ifs, raw_data, '\r')) {
-    gamma.append(raw_data.c_str());
-    gamma.append(" ");
-    std::getline(ifs, raw_data);
-  }
-  ifs.close();
-
-  /* eliminate space character in the last byte */
-  if (!gamma.empty()) {
-    gamma.pop_back();
+  struct stat info;
+  if (fstat(fd, &info) == -1) {
+    DLOGE("Unable to stat gamma calibration '%s', error = %s", file, strerror(errno));
+    close(fd);
+    return {};
   }
 
-  return gamma;
+  std::vector<char> buf(info.st_size);
+  char *ptr = buf.data();
+  ssize_t len;
+  while (((len = read(fd, ptr, info.st_size - (ptr - buf.data()))) != 0)) {
+    if (len > 0) {
+      ptr += len;
+    } else if ((errno != EINTR) && (errno != EAGAIN)) {
+      break;
+    }
+  }
+  close(fd);
+
+  if (len == 0) {
+    char *token, *saveptr = nullptr;
+    const char *delim = "\r\n";
+    std::string gamma;
+
+    token = strtok_r(buf.data(), delim, &saveptr);
+    while (token) {
+      gamma.append(token);
+      gamma.append(" ");
+      token = strtok_r(NULL, delim, &saveptr);
+    }
+
+    if (!gamma.empty()) {
+      gamma.pop_back();
+    }
+
+    return gamma;
+  } else {
+    DLOGE("Failed to read gamma calibration data, error = %s", strerror(errno));
+    return {};
+  }
 }
 
 static DisplayError WritePanelGammaTableToDriver(const std::string &gamma_data) {
@@ -1340,6 +1365,15 @@ HWC2::Error HWCDisplayBuiltIn::GetPanelMaxBrightness(uint32_t *max_brightness_le
   }
 
   return HWC2::Error::None;
+}
+
+DisplayError HWCDisplayBuiltIn::SetCurrentPanelGammaSource(enum PanelGammaSource source) {
+  DisplayError error = UpdatePanelGammaTable(source);
+  if (error == kErrorNone) {
+    current_panel_gamma_source_ = source;
+  }
+
+  return error;
 }
 
 HWC2::Error HWCDisplayBuiltIn::SetBLScale(uint32_t level) {
