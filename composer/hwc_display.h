@@ -560,6 +560,7 @@ class HWCDisplay : public DisplayEventHandler {
   int32_t client_dataspace_ = 0;
   hwc_region_t client_damage_region_ = {};
   bool display_idle_ = false;
+  float hdr_largest_layer_px_ = 0.0f;
 
  private:
   void DumpInputBuffers(void);

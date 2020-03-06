@@ -32,6 +32,8 @@
 
 #include <thermal_client.h>
 #include <mutex>
+#include <hardware/google/light/1.0/ILight.h>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -234,6 +236,13 @@ class HWCDisplayBuiltIn : public HWCDisplay, public SyncTask<LayerStitchTaskCode
   bool disable_dyn_fps_ = false;
   bool enhance_idle_time_ = false;
   bool force_reset_validate_ = false;
+
+  // Members for HBM feature
+  static constexpr float hbm_threshold_pct_ = 0.5f;
+  float hbm_threshold_px_ = std::numeric_limits<float>::max();
+  android::sp<hardware::google::light::V1_0::ILight> hardware_ILight_ = nullptr;
+  bool has_init_light_server_ = false;
+  bool high_brightness_mode_ = false;
 };
 
 }  // namespace sdm
