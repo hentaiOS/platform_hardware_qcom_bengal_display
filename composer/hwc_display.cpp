@@ -2826,4 +2826,18 @@ int HWCDisplay::GetActiveConfigIndex() {
   return active_config_index_;
 }
 
+HWC2::Error HWCDisplay::GetSupportedContentTypes(hidl_vec<HwcContentType> *types) {
+  types = {};
+
+  return HWC2::Error::None;
+}
+
+HWC2::Error HWCDisplay::SetContentType(HwcContentType type) {
+  if (type == HwcContentType::NONE) {
+    return HWC2::Error::None;
+  }
+
+  return HWC2::Error::Unsupported;
+}
+
 }  // namespace sdm

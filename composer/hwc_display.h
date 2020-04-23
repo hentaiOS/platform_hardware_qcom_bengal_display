@@ -44,9 +44,10 @@
 #include "hwc_layers.h"
 #include "hwc_buffer_sync_handler.h"
 
-using android::hardware::graphics::common::V1_2::ColorMode;
+using android::hardware::hidl_vec;
 using android::hardware::graphics::common::V1_1::Dataspace;
 using android::hardware::graphics::common::V1_1::RenderIntent;
+using android::hardware::graphics::common::V1_2::ColorMode;
 using android::hardware::graphics::common::V1_2::Hdr;
 namespace composer_V2_4 = ::android::hardware::graphics::composer::V2_4;
 using HwcAttribute = composer_V2_4::IComposerClient::Attribute;
@@ -442,6 +443,9 @@ class HWCDisplay : public DisplayEventHandler {
   virtual HWC2::Error SetActiveConfigWithConstraints(
       hwc2_config_t config, const VsyncPeriodChangeConstraints *vsync_period_change_constraints,
       VsyncPeriodChangeTimeline *out_timeline);
+  virtual HWC2::Error SetAutoLowLatencyMode(bool on) { return HWC2::Error::Unsupported; }
+  virtual HWC2::Error GetSupportedContentTypes(hidl_vec<HwcContentType> *types);
+  virtual HWC2::Error SetContentType(HwcContentType type);
 
   HWC2::Error SetDisplayElapseTime(uint64_t time);
   virtual bool HasReadBackBufferSupport() { return false; }
