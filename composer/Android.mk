@@ -65,6 +65,10 @@ LOCAL_SRC_FILES               := QtiComposer.cpp QtiComposerClient.cpp service.c
                                  gl_layer_stitch.cpp \
                                  gl_layer_stitch_impl.cpp
 
+ifeq ($(TARGET_USES_FOD_ZPOS), true)
+LOCAL_CFLAGS                  += -DFOD_ZPOS
+endif
+
 LOCAL_INIT_RC                 := vendor.qti.hardware.display.composer-service.rc
 ifneq ($(TARGET_HAS_LOW_RAM),true)
   ifeq ($(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX),bengal_32)
