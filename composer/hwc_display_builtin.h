@@ -32,7 +32,6 @@
 
 #include <thermal_client.h>
 #include <mutex>
-#include <hardware/google/light/1.0/ILight.h>
 #include <limits>
 #include <string>
 #include <vector>
@@ -151,6 +150,10 @@ class HWCDisplayBuiltIn : public HWCDisplay, public SyncTask<LayerStitchTaskCode
   virtual bool HasReadBackBufferSupport();
   virtual bool IsDisplayIdle();
 
+  virtual bool IsHbmSupported() override;
+  virtual HWC2::Error SetHbm(HbmState state, HbmClient client) override;
+  virtual HbmState GetHbm() override;
+
  private:
   HWCDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
                     HWCCallbacks *callbacks, HWCDisplayEventHandler *event_handler,
@@ -181,6 +184,7 @@ class HWCDisplayBuiltIn : public HWCDisplay, public SyncTask<LayerStitchTaskCode
   void SetPartialUpdate(DisplayConfigFixedInfo fixed_info);
   uint32_t GetUpdatingAppLayersCount();
   void ValidateUiScaling();
+  HWC2::Error ApplyHbmLocked() REQUIRES(hbm_mutex);
 
   // SyncTask methods.
   void OnTask(const LayerStitchTaskCode &task_code,
@@ -238,11 +242,16 @@ class HWCDisplayBuiltIn : public HWCDisplay, public SyncTask<LayerStitchTaskCode
   bool force_reset_validate_ = false;
 
   // Members for HBM feature
+  static constexpr const char kHighBrightnessModeNode[] =
+      "/sys/class/backlight/panel0-backlight/hbm_mode";
   static constexpr float hbm_threshold_pct_ = 0.5f;
+  const bool mHasHbmNode = !access(kHighBrightnessModeNode, F_OK);
+  std::mutex hbm_mutex;
   float hbm_threshold_px_ = std::numeric_limits<float>::max();
-  android::sp<hardware::google::light::V1_0::ILight> hardware_ILight_ = nullptr;
-  bool has_init_light_server_ = false;
+  bool has_config_hbm_threshold_ = false;
   bool high_brightness_mode_ = false;
+  HbmState mHbmSates[CLIENT_MAX] GUARDED_BY(hbm_mutex) = {HbmState::OFF};
+  HbmState mCurHbmState GUARDED_BY(hbm_mutex) = HbmState::OFF;
 };
 
 }  // namespace sdm
