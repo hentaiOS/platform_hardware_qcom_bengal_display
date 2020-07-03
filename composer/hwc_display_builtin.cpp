@@ -54,6 +54,77 @@ static void SetRect(LayerRect &src_rect, GLRect *target) {
   target->bottom = src_rect.bottom;
 }
 
+static std::string LoadPanelGammaCalibration() {
+  constexpr char file[] = "/mnt/vendor/persist/display/gamma_calib_data.cal";
+  std::ifstream ifs(file);
+
+  if (!ifs.is_open()) {
+    DLOGW("Unable to open gamma calibration '%s', error = %s", file, strerror(errno));
+    return {};
+  }
+
+  std::string raw_data, gamma;
+  while (std::getline(ifs, raw_data, '\r')) {
+    gamma.append(raw_data.c_str());
+    gamma.append(" ");
+    std::getline(ifs, raw_data);
+  }
+  ifs.close();
+
+  /* eliminate space character in the last byte */
+  if (!gamma.empty()) {
+    gamma.pop_back();
+  }
+
+  return gamma;
+}
+
+static DisplayError WritePanelGammaTableToDriver(const std::string &gamma_data) {
+  constexpr char gamma_path[] = "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/gamma";
+  int fd = open(gamma_path, O_WRONLY);
+  if (fd < 0) {
+    DLOGW("Unable to open gamma node '%s', error = %s", gamma_path, strerror(errno));
+    return kErrorFileDescriptor;
+  }
+
+  constexpr int max_retries = 5;
+  ssize_t len;
+  int retry_count = 0;
+  DisplayError error = kErrorNone;
+  while ((len = pwrite(fd, gamma_data.c_str(), gamma_data.size(), 0)) != gamma_data.size()) {
+    if ((len == -1 && errno != EINTR && errno != EAGAIN) || (++retry_count > max_retries)) {
+      DLOGE("Failed to write gamma calibration(retry %d), error = %s", retry_count,
+            strerror(errno));
+      break;
+    }
+  }
+  close(fd);
+
+  if (len != gamma_data.size()) {
+    error = kErrorResources;
+  }
+
+  return error;
+}
+
+static DisplayError UpdatePanelGammaTable(enum HWCDisplay::PanelGammaSource source) {
+  std::string gamma_data = {};
+  DisplayError error;
+  if (source == HWCDisplay::kGammaDefault) {
+    gamma_data = "default";
+  } else if (source == HWCDisplay::kGammaCalibration) {
+    gamma_data = LoadPanelGammaCalibration();
+  }
+
+  if (!gamma_data.empty()) {
+    error = WritePanelGammaTableToDriver(gamma_data);
+  } else {
+    error = kErrorParameters;
+  }
+
+  return error;
+}
+
 int HWCDisplayBuiltIn::Create(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
                               HWCCallbacks *callbacks, HWCDisplayEventHandler *event_handler,
                               qService::QService *qservice, hwc2_display_t id, int32_t sdm_id,
