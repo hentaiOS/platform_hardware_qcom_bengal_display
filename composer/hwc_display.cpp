@@ -2374,7 +2374,7 @@ void HWCDisplay::Dump(std::ostringstream *os) {
         << std::endl;
   }
 
-  os << "\npanel gamma source: " << GetCurrentPanelGammaSource() << std::endl;
+  *os << "\npanel gamma source: " << GetCurrentPanelGammaSource() << std::endl;
 
   if (layer_stack_invalid_) {
     *os << "\n Layers added or removed but not reflected to SDM's layer stack yet\n";
